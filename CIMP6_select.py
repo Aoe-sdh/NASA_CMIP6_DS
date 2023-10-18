@@ -1,11 +1,11 @@
-import numpy as np
 import netCDF4 as nc
 import xarray as xr
 import os
 import tools
+import csv
 
 
-def cmip6Clip(file_xadv,path1,path2,value):
+def cmip6Clip(shapefile,file_xadv,path1,path2,value):
 
      for i in range(len(file_xadv)):
           outfile = path2 + file_xadv[i]
@@ -15,6 +15,9 @@ def cmip6Clip(file_xadv,path1,path2,value):
 
 def cmip6Merge(file_xadv, path1, fileout,value):
      hadv_new = []
+
+
+
      for i in range(len(file_xadv)):
           xadv=xr.open_dataset(path1+file_xadv[i])[value]
           hadv_new.append((xadv))
@@ -37,6 +40,43 @@ def cmip6TimeSelect(file,varible,fileout,Dtype):
      print('###### success #####', fileout)
 
 
+def cimp6toSWAT(path,outpath,variible):
+
+     file = path
+     dataset = nc.Dataset(file)
+     lat_set = dataset.variables['lat'][:]
+     lon_set = dataset.variables['lon'][:]
+     temp_set = dataset.variables[variible][:]
+     time_set = dataset.variables['time'][:]
+
+     if variible == "pr":
+          temp_set = temp_set * 86400
+     elif variible == "hurs":
+          temp_set = temp_set / 100
+     elif variible == "rsds" or variible == "rlds":
+          temp_set = temp_set * 86400 / 1000000
+     else:
+          temp_set = temp_set -273.15
+
+     source_file = file.split('.')
+     file_name0 = outpath
+     for j in range(len(lat_set)):  # j为纬度
+          for k in range(len(lon_set)):  # k为经度
+               file_name = file_name0 + "_lat" + str(j).zfill(3) + "_lon" + str(k).zfill(3)
+               with open(file_name + '.csv', 'w', newline='') as targetFile:
+                    # 创建写入流
+                    writer = csv.writer(targetFile)
+                    # 写入表头
+                    writer.writerow(('time', 'lat', 'lon', variible))
+                    # 写入数据
+                    for i in range(len(time_set)):
+                         writer.writerow((time_set[i], lat_set[j], lon_set[k],temp_set[i][j][k]))
+
+
+
+
+
+
 
 def mkdir(path):
      folder = os.path.exists(path)
@@ -46,63 +86,3 @@ def mkdir(path):
           print("---  new folder...  OK---")
      else:
           print("---  There is this folder!  ---")
-
-
-
-path1 = 'F:/ClimateDataChinaClip'
-path2 = 'F:/CMIP6_R'
-path3 = 'F:/CMIP6_R_Select'
-# path3 = "C:\\zxDownscale\\BiasCorrec\\Data\\CMIP6_Select"
-shapefile = 'C:/zxDownscale/01NCClip/Data/Zone02.shp'
-
-variables = ["pr","tasmax","tasmin"]
-scenarios = ["historical","ssp126", "ssp245","ssp370","ssp585"]
-sources = ['ACCESS-CM2', 'ACCESS-ESM1-5', 'AWI-CM-1-1-MR',
-           'BCC-CSM2-MR', 'CanESM5', 'CESM2', 'CESM2-WACCM',
-           'CMCC-CM2-SR5', 'CMCC-ESM2', 'EC-Earth3', 'EC-Earth3-Veg',
-           'FGOALS-g3', 'GFDL-ESM4', 'INM-CM4-8', 'INM-CM5-0', 'IPSL-CM6A-LR',
-           'MIROC6', 'MPI-ESM1-2-HR', 'MPI-ESM1-2-LR', 'MRI-ESM2-0', 'NorESM2-LM', 'NorESM2-MM']
-
-
-for variable in variables:
-     for scenario in scenarios:
-          for source in sources:
-               file_xadv = []
-               p1 = path1 + "/" +variable +"/" +scenario +"/" +source +"/"
-
-               if os.path.exists(p1):
-                    file_xadv = os.listdir(p1)
-                    p2 = path2 + "/" +variable +"/" +variable +"_"+scenario +"_" +source +".nc"
-                    p3 = path2 + "/" +variable
-                    if not os.path.exists(p3):
-                         mkdir(p3)
-                    if not os.path.exists(p2):
-                         try:
-                              cmip6Merge(file_xadv,p1,p2,variable)
-                         except Exception as e:
-                              continue
-                    p4 = path3 + "/" +variable
-                    if not os.path.exists(p4):
-                         mkdir(p4)
-                    p5 = path3 + "/" + variable + "/" + variable + "_" + scenario + "_" + source + "_1980-2014.nc"
-                    p6 = path3 + "/" + variable + "/" + variable + "_" + scenario + "_" + source + "_2015-2100.nc"
-
-                    if scenario == "historical":
-                         if not os.path.exists(p5):
-                              try:
-                                   cmip6TimeSelect(p2,variable,p5,"0")
-                              except Exception as e:
-                                   continue
-                    else:
-                         if not os.path.exists(p6):
-                              try:
-                                   cmip6TimeSelect(p2,variable,p6,"1")
-                              except Exception as e:
-                                   continue
-
-
-
-
-
-
-
