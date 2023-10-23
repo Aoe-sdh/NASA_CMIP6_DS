@@ -4,7 +4,7 @@ import os
 import time
 import numpy as np
 import pandas as pd
-import climate_indices
+# import climate_indices
 from standard_precip import spi
 
 from rpy2.robjects.packages import importr
